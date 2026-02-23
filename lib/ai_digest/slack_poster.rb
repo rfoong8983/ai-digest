@@ -90,7 +90,7 @@ module AiDigest
           ].join("\n")
         end.join("\n\n")
 
-        "*Theme: #{theme['theme']}*\n#{items_text}"
+        "*Theme: #{theme['theme']}*\n\n#{items_text}"
       end.join("\n\n")
 
       "Weekly Best of AI — #{date_range}\n\n#{themes_text}"

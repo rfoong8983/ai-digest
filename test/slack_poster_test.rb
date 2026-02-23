@@ -102,4 +102,25 @@ class SlackPosterTest < Minitest::Test
     message = AiDigest::SlackPoster.format_weekly_message({ "themes" => [] }, Date.today - 6, Date.today)
     assert_includes message, "No notable items"
   end
+
+  def test_post_weekly_sends_to_webhook
+    stub_request(:post, "https://hooks.slack.com/services/test/webhook")
+      .with { |req| JSON.parse(req.body)["text"].include?("Weekly Best of AI") }
+      .to_return(status: 200, body: "ok")
+
+    AiDigest.instance_variable_set(:@config, {
+      "slack" => { "webhook_url" => "https://hooks.slack.com/services/test/webhook" }
+    })
+
+    weekly_result = { "themes" => [{ "theme" => "T", "items" => [{ "title" => "A", "source" => "S", "why_it_matters" => "W", "url" => "https://x.com" }] }] }
+    result = AiDigest::SlackPoster.post_weekly(weekly_result, Date.today - 6, Date.today)
+    assert result
+  end
+
+  def test_post_weekly_returns_false_when_no_webhook
+    ENV.delete("AI_DIGEST_SLACK_WEBHOOK")
+    AiDigest.instance_variable_set(:@config, { "slack" => {} })
+    result = AiDigest::SlackPoster.post_weekly({ "themes" => [] }, Date.today - 6, Date.today)
+    refute result
+  end
 end
