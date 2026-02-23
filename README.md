@@ -39,7 +39,7 @@ aws bedrock list-foundation-models --region us-east-1 --output json | jq '.model
 
 ## Usage
 
-### Run manually
+### Run daily digest manually
 
 ```bash
 bundle exec ruby bin/digest
@@ -51,6 +51,18 @@ This will:
 3. Post the digest to Slack
 4. Save a markdown file to `digests/YYYY-MM-DD.md`
 
+### Run weekly digest manually
+
+```bash
+bundle exec ruby bin/weekly-digest
+```
+
+This will:
+1. Read daily digests from the last 7 days
+2. Curate the top 5 items grouped by theme using Claude Sonnet via Bedrock
+3. Post a "Weekly Best of AI" summary to Slack
+4. Save to `digests/weekly-YYYY-MM-DD.md`
+
 ### Run tests
 
 ```bash
@@ -61,7 +73,7 @@ bundle exec ruby -Ilib:test -e "Dir.glob('test/**/*_test.rb').each { |f| require
 
 The install script generates a launchd plist with paths derived from your environment (project location, HOME, ruby version manager). It runs the digest every day at 10:00 AM.
 
-### Install the schedule
+### Install the daily schedule
 
 ```bash
 ruby bin/install           # defaults to 10:00 AM
@@ -75,24 +87,58 @@ This will:
 - Copy it to `~/Library/LaunchAgents/`
 - Load the job
 
-### Verify it's loaded
+## Weekly Schedule
+
+The weekly digest runs every Monday, curating the top items from the past week's daily digests using Claude Sonnet (a stronger model than the daily Haiku filter).
+
+### Install the weekly schedule
+
+```bash
+ruby bin/install --weekly          # Monday at 10:00 AM
+ruby bin/install --weekly 9:00     # Monday at 9:00 AM
+```
+
+This installs a separate launchd job (`com.ai-digest.weekly`) that runs `bin/weekly-digest` on Mondays.
+
+### Weekly config
+
+The `weekly` section in `config/settings.yml` controls:
+
+```yaml
+weekly:
+  model_id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+  max_items: 5
+  lookback_days: 7
+```
+
+### Check weekly logs
+
+```bash
+tail -f weekly-digest.log
+```
+
+## Managing Schedules
+
+### Verify loaded jobs
 
 ```bash
 launchctl list | grep ai-digest
 ```
 
-You should see a line with `com.ai-digest`. The first column is the PID (or `-` if not currently running), the second is the last exit status.
+You should see `com.ai-digest` (daily) and/or `com.ai-digest.weekly` (weekly).
 
 ### Check logs
 
 ```bash
-tail -f digest.log
+tail -f digest.log          # daily
+tail -f weekly-digest.log   # weekly
 ```
 
-### Unload / stop the schedule
+### Unload / stop a schedule
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.ai-digest.plist
+launchctl unload ~/Library/LaunchAgents/com.ai-digest.plist         # daily
+launchctl unload ~/Library/LaunchAgents/com.ai-digest.weekly.plist  # weekly
 ```
 
 ### Change the schedule
@@ -100,10 +146,11 @@ launchctl unload ~/Library/LaunchAgents/com.ai-digest.plist
 Re-run the install script with the new time:
 
 ```bash
-ruby bin/install 9:00
+ruby bin/install 9:00               # change daily time
+ruby bin/install --weekly 11:00     # change weekly time
 ```
 
-**Note:** launchd jobs only run when your Mac is awake. If your Mac is asleep at 10 AM, the job will run the next time it wakes up.
+**Note:** launchd jobs only run when your Mac is awake. If your Mac is asleep at the scheduled time, the job will run the next time it wakes up.
 
 ## Configuration
 
@@ -139,13 +186,16 @@ Any keys in this file override `settings.yml`. This file is gitignored and is th
 ```
 ai-digest/
   bin/
-    digest                # Main entry point
-    install               # Generates and installs launchd plist
-    run-digest.sh         # Wrapper script for launchd
+    digest                # Daily digest entry point
+    weekly-digest         # Weekly digest entry point
+    install               # Generates and installs launchd plist(s)
+    run-digest.sh         # Wrapper script for daily launchd job
+    run-weekly-digest.sh  # Wrapper script for weekly launchd job
   lib/ai_digest.rb        # Module + config loading
   lib/ai_digest/
     fetcher.rb            # RSS feed fetching (feedjira)
     summarizer.rb         # Bedrock Claude Haiku filtering
+    weekly_curator.rb     # Bedrock Claude Sonnet weekly curation
     slack_poster.rb       # Slack webhook posting
     storage.rb            # Local markdown storage
   config/
@@ -153,6 +203,5 @@ ai-digest/
     settings.local.yml    # Local overrides (gitignored)
     sources.yml           # RSS source list
   test/                   # Minitest + webmock tests
-  digests/                # Saved daily digests (gitignored)
-  com.ai-digest.plist # Generated launchd plist (reference copy)
+  digests/                # Saved daily and weekly digests (gitignored)
 ```
