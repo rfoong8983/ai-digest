@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$stdout.sync = true
+$stderr.sync = true
+
+require_relative "../lib/ai_digest"
+
+puts "AI Digest — #{Date.today.strftime('%B %d, %Y')}"
+puts "=" * 40
+
+# 1. Fetch from all sources
+puts "\nFetching from #{AiDigest.sources.length} sources..."
+items = AiDigest::Fetcher.fetch_all(AiDigest.sources)
+puts "Found #{items.length} items from the last 24 hours."
+
+if items.empty?
+  puts "No items found. Exiting."
+  exit 0
+end
+
+# 2. Summarize via Bedrock
+puts "\nFiltering and summarizing via Claude Haiku..."
+digest_items = AiDigest::Summarizer.summarize(items, AiDigest.config)
+puts "#{digest_items.length} relevant items after filtering."
+
+# 3. Post to Slack
+puts "\nPosting to Slack..."
+if AiDigest::SlackPoster.post(digest_items)
+  puts "Posted to Slack successfully."
+else
+  puts "Slack post skipped or failed."
+end
+
+# 4. Save locally
+filepath = AiDigest::Storage.save(digest_items)
+puts "Saved digest to #{filepath}"
+
+puts "\nDone!"

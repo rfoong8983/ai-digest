@@ -1,0 +1,7 @@
+digests/
+.bundle/
+vendor/
+*.log
+.env
+config/settings.local.yml
+com.ai-digest.plist

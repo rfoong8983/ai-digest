@@ -1,0 +1,13 @@
+topics:
+  - "AI coding agents and assistants"
+  - "Developer workflow tooling and automation"
+  - "LLM model releases and capabilities"
+
+max_items_per_digest: 10
+
+bedrock:
+  region: "us-east-1"
+  model_id: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+storage:
+  path: "digests"

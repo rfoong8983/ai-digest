@@ -1,0 +1,35 @@
+sources:
+  - name: "Simon Willison"
+    url: "https://simonwillison.net/atom/everything/"
+    type: rss
+    category: practitioner-blog
+
+  - name: "Anthropic Engineering"
+    url: "https://www.anthropic.com/engineering/rss"
+    type: rss
+    category: lab-blog
+
+  - name: "AI News (smol.ai)"
+    url: "https://news.smol.ai/rss.xml"
+    type: rss
+    category: aggregator
+
+  - name: "Latent Space"
+    url: "https://www.latent.space/feed"
+    type: rss
+    category: newsletter
+
+  - name: "OpenAI Blog"
+    url: "https://openai.com/blog/rss.xml"
+    type: rss
+    category: lab-blog
+
+  - name: "Google DeepMind Blog"
+    url: "https://blog.google/technology/ai/rss/"
+    type: rss
+    category: lab-blog
+
+  - name: "Hacker News"
+    url: "https://hnrss.org/frontpage"
+    type: rss
+    category: aggregator
