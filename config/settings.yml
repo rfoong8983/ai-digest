@@ -11,3 +11,8 @@ bedrock:
 
 storage:
   path: "digests"
+
+weekly:
+  model_id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+  max_items: 5
+  lookback_days: 7
