@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$stdout.sync = true
+$stderr.sync = true
+
+require_relative "../lib/ai_digest"
+
+lookback = AiDigest.config.dig("weekly", "lookback_days") || 7
+end_date = Date.today
+start_date = end_date - lookback + 1
+
+puts "Weekly Best of AI — #{start_date.strftime('%b %d')} to #{end_date.strftime('%b %d, %Y')}"
+puts "=" * 40
+
+# 1. Curate via Sonnet (load_week + build_prompt + call_bedrock + parse are all inside curate)
+puts "\nCurating top items from the last #{lookback} days via Claude Sonnet..."
+weekly_result = AiDigest::WeeklyCurator.curate(AiDigest.config)
+total = weekly_result["themes"].sum { |t| t["items"].length }
+puts "Selected #{total} items across #{weekly_result['themes'].length} themes."
+
+if total == 0
+  puts "No items to curate this week."
+  exit 0
+end
+
+# 2. Post to Slack
+puts "\nPosting to Slack..."
+if AiDigest::SlackPoster.post_weekly(weekly_result, start_date, end_date)
+  puts "Posted to Slack successfully."
+else
+  puts "Slack post skipped or failed."
+end
+
+# 3. Save locally
+filepath = AiDigest::Storage.save_weekly(weekly_result, start_date, end_date)
+puts "Saved digest to #{filepath}"
+
+puts "\nDone!"
