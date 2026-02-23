@@ -5,3 +5,4 @@ vendor/
 .env
 config/settings.local.yml
 com.ai-digest.plist
+com.ai-digest.weekly.plist

@@ -1,32 +1,35 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Generates and installs the launchd plist with paths derived from the current environment.
+# Generates and installs launchd plist(s) with paths derived from the current environment.
 #
 # Usage:
-#   ruby bin/install              # defaults to 10:00 AM
-#   ruby bin/install 8:30         # set to 8:30 AM
-#   ruby bin/install 14:00        # set to 2:00 PM
+#   ruby bin/install              # daily job, defaults to 10:00 AM
+#   ruby bin/install 8:30         # daily job at 8:30 AM
+#   ruby bin/install --weekly     # weekly job, Monday 10:00 AM
+#   ruby bin/install --weekly 9:00  # weekly job, Monday 9:00 AM
 
 require "fileutils"
 
-LABEL = "com.ai-digest"
+weekly = ARGV.delete("--weekly")
+label = weekly ? "com.ai-digest.weekly" : "com.ai-digest"
 
 # Parse time argument
 hour, minute = 10, 0
-if ARGV[0]
-  parts = ARGV[0].split(":")
+time_arg = ARGV[0]
+if time_arg
+  parts = time_arg.split(":")
   hour = Integer(parts[0])
   minute = Integer(parts[1] || 0)
   unless (0..23).include?(hour) && (0..59).include?(minute)
-    abort "Invalid time: #{ARGV[0]} (expected HH:MM in 24-hour format)"
+    abort "Invalid time: #{time_arg} (expected HH:MM in 24-hour format)"
   end
 end
 
 project_dir = File.expand_path("..", __dir__)
 home_dir    = ENV.fetch("HOME")
-wrapper     = File.join(project_dir, "bin", "run-digest.sh")
-plist_dest  = File.join(home_dir, "Library", "LaunchAgents", "#{LABEL}.plist")
+wrapper     = File.join(project_dir, "bin", weekly ? "run-weekly-digest.sh" : "run-digest.sh")
+plist_dest  = File.join(home_dir, "Library", "LaunchAgents", "#{label}.plist")
 
 # Detect ruby version manager shims
 rbenv_shims = "/opt/homebrew/opt/rbenv/shims"
@@ -43,13 +46,15 @@ shim_path = if Dir.exist?(rbenv_shims) && system("which rbenv > /dev/null 2>&1")
 path_components = [shim_path, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].compact
 path_value = path_components.join(":")
 
+weekday_entry = weekly ? "\n          <key>Weekday</key>\n          <integer>1</integer>" : ""
+
 plist_content = <<~PLIST
   <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
   <plist version="1.0">
   <dict>
       <key>Label</key>
-      <string>#{LABEL}</string>
+      <string>#{label}</string>
       <key>ProgramArguments</key>
       <array>
           <string>/bin/bash</string>
@@ -60,7 +65,7 @@ plist_content = <<~PLIST
           <key>Hour</key>
           <integer>#{hour}</integer>
           <key>Minute</key>
-          <integer>#{minute}</integer>
+          <integer>#{minute}</integer>#{weekday_entry}
       </dict>
       <key>StandardOutPath</key>
       <string>/dev/null</string>
@@ -86,16 +91,14 @@ system("launchctl", "unload", plist_dest, err: "/dev/null", out: "/dev/null") if
 File.write(plist_dest, plist_content)
 puts "Wrote #{plist_dest}"
 
-# Also write a copy in the project for reference
-File.write(File.join(project_dir, "#{LABEL}.plist"), plist_content)
-puts "Updated #{LABEL}.plist in project directory"
-
 # Load the job
 system("launchctl", "load", plist_dest)
-puts "Loaded #{LABEL}"
+puts "Loaded #{label}"
 
 puts
 formatted_time = format("%d:%02d %s", hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour), minute, hour >= 12 ? "PM" : "AM")
-puts "Schedule: daily at #{formatted_time}"
+schedule_desc = weekly ? "Monday at #{formatted_time}" : "daily at #{formatted_time}"
+puts "Schedule: #{schedule_desc}"
 puts "Verify:   launchctl list | grep ai-digest"
-puts "Logs:     tail -f #{project_dir}/digest.log"
+log_file = weekly ? "weekly-digest.log" : "digest.log"
+puts "Logs:     tail -f #{project_dir}/#{log_file}"
