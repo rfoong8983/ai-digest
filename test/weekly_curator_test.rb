@@ -99,4 +99,18 @@ class WeeklyCuratorTest < Minitest::Test
     result = AiDigest::WeeklyCurator.parse_response("not json")
     assert_equal({ "themes" => [] }, result)
   end
+
+  def test_load_week_excludes_boundary_day
+    boundary_date = Date.today - 7
+    File.write(File.join(@tmpdir, "#{boundary_date.strftime('%Y-%m-%d')}.md"),
+      "# AI Digest\n\n## 1. Boundary Article\nContent.")
+
+    text = AiDigest::WeeklyCurator.load_week(@config)
+    assert_equal "", text
+  end
+
+  def test_curate_returns_empty_themes_when_no_digests
+    result = AiDigest::WeeklyCurator.curate(@config)
+    assert_equal({ "themes" => [] }, result)
+  end
 end

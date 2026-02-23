@@ -12,7 +12,7 @@ module AiDigest
         File.join(AiDigest.root, storage_path)
       end
       lookback = config.dig("weekly", "lookback_days") || 7
-      cutoff = Date.today - lookback
+      cutoff = Date.today - lookback + 1
 
       texts = []
       Dir.glob(File.join(digests_path, "*.md")).sort.each do |file|
