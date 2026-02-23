@@ -72,4 +72,34 @@ class SlackPosterTest < Minitest::Test
     result = AiDigest::SlackPoster.post(@digest_items)
     refute result
   end
+
+  def test_format_weekly_message_includes_themes
+    weekly_result = {
+      "themes" => [
+        {
+          "theme" => "Agentic Engineering",
+          "items" => [
+            {
+              "title" => "Agentic Patterns",
+              "source" => "Simon Willison",
+              "why_it_matters" => "Defines best practices.",
+              "url" => "https://example.com/patterns"
+            }
+          ]
+        }
+      ]
+    }
+
+    message = AiDigest::SlackPoster.format_weekly_message(weekly_result, Date.today - 6, Date.today)
+
+    assert_includes message, "Weekly Best of AI"
+    assert_includes message, "Agentic Engineering"
+    assert_includes message, "Agentic Patterns"
+    assert_includes message, "Defines best practices."
+  end
+
+  def test_format_weekly_message_handles_empty_themes
+    message = AiDigest::SlackPoster.format_weekly_message({ "themes" => [] }, Date.today - 6, Date.today)
+    assert_includes message, "No notable items"
+  end
 end

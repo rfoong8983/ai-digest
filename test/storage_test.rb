@@ -46,4 +46,32 @@ class StorageTest < Minitest::Test
     content = File.read(expected_file)
     assert_includes content, "No relevant AI news found today"
   end
+
+  def test_save_weekly_creates_prefixed_file
+    weekly_result = {
+      "themes" => [
+        {
+          "theme" => "Test Theme",
+          "items" => [
+            {
+              "title" => "Test Article",
+              "source" => "Blog",
+              "why_it_matters" => "It matters.",
+              "url" => "https://example.com"
+            }
+          ]
+        }
+      ]
+    }
+
+    AiDigest::Storage.save_weekly(weekly_result, Date.today - 6, Date.today, path: @tmpdir)
+
+    expected_file = File.join(@tmpdir, "weekly-#{Date.today.strftime('%Y-%m-%d')}.md")
+    assert File.exist?(expected_file)
+
+    content = File.read(expected_file)
+    assert_includes content, "Weekly Best of AI"
+    assert_includes content, "Test Theme"
+    assert_includes content, "Test Article"
+  end
 end

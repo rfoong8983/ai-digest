@@ -40,5 +40,48 @@ module AiDigest
 
       "# AI Digest — #{date}\n\n#{items_md}"
     end
+
+    def self.save_weekly(weekly_result, start_date, end_date, path: nil)
+      path ||= File.join(AiDigest.root, AiDigest.config.dig("storage", "path") || "digests")
+      FileUtils.mkdir_p(path)
+
+      filename = "weekly-#{end_date.strftime('%Y-%m-%d')}.md"
+      filepath = File.join(path, filename)
+
+      content = format_weekly_markdown(weekly_result, start_date, end_date)
+      File.write(filepath, content)
+
+      filepath
+    end
+
+    def self.format_weekly_markdown(weekly_result, start_date, end_date)
+      date_range = "#{start_date.strftime('%B %d')} - #{end_date.strftime('%B %d, %Y')}"
+      themes = weekly_result["themes"] || []
+
+      if themes.empty?
+        return "# Weekly Best of AI — #{date_range}\n\nNo notable items this week.\n"
+      end
+
+      item_number = 0
+      themes_md = themes.map do |theme|
+        items_md = theme["items"].map do |item|
+          item_number += 1
+          [
+            "### #{item_number}. #{item['title']}",
+            "",
+            "**Source:** #{item['source']}",
+            "",
+            item["why_it_matters"],
+            "",
+            "[Read more](#{item['url']})",
+            ""
+          ].join("\n")
+        end.join("\n")
+
+        "## #{theme['theme']}\n\n#{items_md}"
+      end.join("\n---\n\n")
+
+      "# Weekly Best of AI — #{date_range}\n\n#{themes_md}"
+    end
   end
 end
