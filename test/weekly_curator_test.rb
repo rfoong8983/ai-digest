@@ -68,6 +68,14 @@ class WeeklyCuratorTest < Minitest::Test
     assert_includes prompt, "AI coding agents"
   end
 
+  def test_build_prompt_requests_article_url_field
+    digests_text = "# AI Digest — Feb 23\n\n## 1. Article A\nSummary A."
+
+    prompt = AiDigest::WeeklyCurator.build_prompt(digests_text, @config)
+
+    assert_includes prompt, "article_url"
+  end
+
   def test_parse_response_extracts_themed_items
     response_text = <<~JSON
       {

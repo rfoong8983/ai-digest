@@ -34,9 +34,12 @@ module AiDigest
       feed.entries
         .select { |entry| entry.published && entry.published > cutoff }
         .map do |entry|
+          url = entry.url || entry.entry_id
+          article_url = entry.entry_id&.match?(%r{\Ahttps?://}) ? entry.entry_id : url
           {
             title: entry.title&.strip,
-            url: entry.url || entry.entry_id,
+            url: url,
+            article_url: article_url,
             summary: entry.summary&.strip || entry.content&.strip&.slice(0, 500),
             source: source["name"],
             category: source["category"],

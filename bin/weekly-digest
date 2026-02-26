@@ -6,6 +6,8 @@ $stderr.sync = true
 
 require_relative "../lib/ai_digest"
 
+test_mode = ARGV.include?("--test")
+
 lookback = AiDigest.config.dig("weekly", "lookback_days") || 7
 end_date = Date.today
 start_date = end_date - lookback + 1
@@ -25,8 +27,8 @@ if total == 0
 end
 
 # 2. Post to Slack
-puts "\nPosting to Slack..."
-if AiDigest::SlackPoster.post_weekly(weekly_result, start_date, end_date)
+puts "\nPosting to Slack#{test_mode ? ' (TEST)' : ''}..."
+if AiDigest::SlackPoster.post_weekly(weekly_result, start_date, end_date, test: test_mode)
   puts "Posted to Slack successfully."
 else
   puts "Slack post skipped or failed."

@@ -16,7 +16,11 @@ module AiDigest
       max_items = config["max_items_per_digest"]
 
       items_text = items.map.with_index(1) do |item, i|
-        "#{i}. [#{item[:source]}] #{item[:title]}\n   URL: #{item[:url]}\n   Description: #{item[:summary]&.slice(0, 300)}"
+        lines = ["#{i}. [#{item[:source]}] #{item[:title]}",
+                 "   URL: #{item[:url]}"]
+        lines << "   Article-URL: #{item[:article_url]}" if item[:article_url]
+        lines << "   Description: #{item[:summary]&.slice(0, 300)}"
+        lines.join("\n")
       end.join("\n\n")
 
       <<~PROMPT
@@ -31,6 +35,7 @@ module AiDigest
         - "summary": a 2-3 sentence summary of why this is relevant
         - "tags": array of short topic tags (e.g., "coding-agent", "model-release", "dev-tooling")
         - "url": the item URL
+        - "article_url": the Article-URL (the source page that links to this item)
 
         Rank by importance. Return at most #{max_items} items.
         Return ONLY valid JSON — no markdown fences, no extra text.

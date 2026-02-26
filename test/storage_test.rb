@@ -47,6 +47,44 @@ class StorageTest < Minitest::Test
     assert_includes content, "No relevant AI news found today"
   end
 
+  def test_save_includes_article_url_in_markdown
+    items_with_article_url = [
+      {
+        "title" => "Cool Tool",
+        "source" => "HN",
+        "summary" => "A cool tool.",
+        "tags" => ["dev-tooling"],
+        "url" => "https://github.com/cool/tool",
+        "article_url" => "https://news.ycombinator.com/item?id=123"
+      }
+    ]
+
+    AiDigest::Storage.save(items_with_article_url, path: @tmpdir)
+
+    content = File.read(File.join(@tmpdir, "#{Date.today.strftime('%Y-%m-%d')}.md"))
+    assert_includes content, "[Read more](https://github.com/cool/tool)"
+    assert_includes content, "[Source](https://news.ycombinator.com/item?id=123)"
+  end
+
+  def test_save_omits_source_link_when_article_url_matches_url
+    items_same_urls = [
+      {
+        "title" => "Blog Post",
+        "source" => "Blog",
+        "summary" => "A post.",
+        "tags" => ["ai"],
+        "url" => "https://blog.example.com/post-1",
+        "article_url" => "https://blog.example.com/post-1"
+      }
+    ]
+
+    AiDigest::Storage.save(items_same_urls, path: @tmpdir)
+
+    content = File.read(File.join(@tmpdir, "#{Date.today.strftime('%Y-%m-%d')}.md"))
+    assert_includes content, "[Read more](https://blog.example.com/post-1)"
+    refute_includes content, "[Source]"
+  end
+
   def test_save_weekly_creates_prefixed_file
     weekly_result = {
       "themes" => [

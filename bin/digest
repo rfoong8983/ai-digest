@@ -6,6 +6,8 @@ $stderr.sync = true
 
 require_relative "../lib/ai_digest"
 
+test_mode = ARGV.include?("--test")
+
 puts "AI Digest — #{Date.today.strftime('%B %d, %Y')}"
 puts "=" * 40
 
@@ -25,8 +27,8 @@ digest_items = AiDigest::Summarizer.summarize(items, AiDigest.config)
 puts "#{digest_items.length} relevant items after filtering."
 
 # 3. Post to Slack
-puts "\nPosting to Slack..."
-if AiDigest::SlackPoster.post(digest_items)
+puts "\nPosting to Slack#{test_mode ? ' (TEST)' : ''}..."
+if AiDigest::SlackPoster.post(digest_items, test: test_mode)
   puts "Posted to Slack successfully."
 else
   puts "Slack post skipped or failed."

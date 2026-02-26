@@ -36,6 +36,38 @@ class SlackPosterTest < Minitest::Test
     assert_includes message, "No relevant AI news found today"
   end
 
+  def test_format_message_title_links_to_article_url
+    items = [
+      {
+        "title" => "Cool Tool",
+        "source" => "Hacker News",
+        "summary" => "A tool for agents.",
+        "tags" => ["dev-tooling"],
+        "url" => "https://github.com/cool/tool",
+        "article_url" => "https://news.ycombinator.com/item?id=123"
+      }
+    ]
+    message = AiDigest::SlackPoster.format_message(items)
+
+    assert_includes message, "<https://news.ycombinator.com/item?id=123|Cool Tool>"
+    assert_includes message, "https://github.com/cool/tool"
+  end
+
+  def test_format_message_title_links_to_url_when_no_article_url
+    items = [
+      {
+        "title" => "Blog Post",
+        "source" => "Blog",
+        "summary" => "A post.",
+        "tags" => ["ai"],
+        "url" => "https://blog.example.com/post-1"
+      }
+    ]
+    message = AiDigest::SlackPoster.format_message(items)
+
+    assert_includes message, "<https://blog.example.com/post-1|Blog Post>"
+  end
+
   def test_post_sends_to_webhook_via_config
     stub_request(:post, "https://hooks.slack.com/services/test/webhook")
       .with { |req| JSON.parse(req.body).key?("text") }
@@ -103,6 +135,30 @@ class SlackPosterTest < Minitest::Test
     assert_includes message, "No notable items"
   end
 
+  def test_format_weekly_message_title_links_to_article_url
+    weekly_result = {
+      "themes" => [
+        {
+          "theme" => "Dev Tools",
+          "items" => [
+            {
+              "title" => "Cool Tool",
+              "source" => "Hacker News",
+              "why_it_matters" => "Big deal.",
+              "url" => "https://github.com/cool/tool",
+              "article_url" => "https://news.ycombinator.com/item?id=123"
+            }
+          ]
+        }
+      ]
+    }
+
+    message = AiDigest::SlackPoster.format_weekly_message(weekly_result, Date.today - 6, Date.today)
+
+    assert_includes message, "<https://news.ycombinator.com/item?id=123|Cool Tool>"
+    assert_includes message, "https://github.com/cool/tool"
+  end
+
   def test_post_weekly_sends_to_webhook
     stub_request(:post, "https://hooks.slack.com/services/test/webhook")
       .with { |req| JSON.parse(req.body)["text"].include?("Weekly Best of AI") }
@@ -122,5 +178,65 @@ class SlackPosterTest < Minitest::Test
     AiDigest.instance_variable_set(:@config, { "slack" => {} })
     result = AiDigest::SlackPoster.post_weekly({ "themes" => [] }, Date.today - 6, Date.today)
     refute result
+  end
+
+  def test_post_uses_test_webhook_when_test_flag_set
+    stub_request(:post, "https://hooks.slack.com/services/test/test-webhook")
+      .with { |req| JSON.parse(req.body).key?("text") }
+      .to_return(status: 200, body: "ok")
+
+    AiDigest.instance_variable_set(:@config, {
+      "slack" => {
+        "webhook_url" => "https://hooks.slack.com/services/test/prod-webhook",
+        "test_webhook_url" => "https://hooks.slack.com/services/test/test-webhook"
+      }
+    })
+
+    result = AiDigest::SlackPoster.post(@digest_items, test: true)
+    assert result
+  end
+
+  def test_post_uses_prod_webhook_when_test_flag_false
+    stub_request(:post, "https://hooks.slack.com/services/test/prod-webhook")
+      .with { |req| JSON.parse(req.body).key?("text") }
+      .to_return(status: 200, body: "ok")
+
+    AiDigest.instance_variable_set(:@config, {
+      "slack" => {
+        "webhook_url" => "https://hooks.slack.com/services/test/prod-webhook",
+        "test_webhook_url" => "https://hooks.slack.com/services/test/test-webhook"
+      }
+    })
+
+    result = AiDigest::SlackPoster.post(@digest_items, test: false)
+    assert result
+  end
+
+  def test_post_returns_false_when_test_flag_set_but_no_test_webhook
+    AiDigest.instance_variable_set(:@config, {
+      "slack" => {
+        "webhook_url" => "https://hooks.slack.com/services/test/prod-webhook"
+      }
+    })
+
+    result = AiDigest::SlackPoster.post(@digest_items, test: true)
+    refute result
+  end
+
+  def test_post_weekly_uses_test_webhook_when_test_flag_set
+    stub_request(:post, "https://hooks.slack.com/services/test/test-webhook")
+      .with { |req| JSON.parse(req.body)["text"].include?("Weekly Best of AI") }
+      .to_return(status: 200, body: "ok")
+
+    AiDigest.instance_variable_set(:@config, {
+      "slack" => {
+        "webhook_url" => "https://hooks.slack.com/services/test/prod-webhook",
+        "test_webhook_url" => "https://hooks.slack.com/services/test/test-webhook"
+      }
+    })
+
+    weekly_result = { "themes" => [{ "theme" => "T", "items" => [{ "title" => "A", "source" => "S", "why_it_matters" => "W", "url" => "https://x.com" }] }] }
+    result = AiDigest::SlackPoster.post_weekly(weekly_result, Date.today - 6, Date.today, test: true)
+    assert result
   end
 end

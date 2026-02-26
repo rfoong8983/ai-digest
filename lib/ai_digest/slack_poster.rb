@@ -6,12 +6,9 @@ require "date"
 
 module AiDigest
   class SlackPoster
-    def self.post(digest_items)
-      webhook_url = AiDigest.config.dig("slack", "webhook_url") || ENV["AI_DIGEST_SLACK_WEBHOOK"]
-      unless webhook_url
-        warn "Slack webhook not configured — set slack.webhook_url in config/settings.local.yml or AI_DIGEST_SLACK_WEBHOOK env var"
-        return false
-      end
+    def self.post(digest_items, test: false)
+      webhook_url = resolve_webhook(test: test)
+      return false unless webhook_url
 
       message = format_message(digest_items)
       uri = URI(webhook_url)
@@ -37,8 +34,9 @@ module AiDigest
 
       items_text = digest_items.each_with_index.map do |item, i|
         tags = Array(item["tags"]).join(", ")
+        title_url = item["article_url"] || item["url"]
         [
-          "#{i + 1}. *#{item['title']}*",
+          "#{i + 1}. *<#{title_url}|#{item['title']}>*",
           "   Source: #{item['source']} | Tags: #{tags}",
           "   #{item['summary']}",
           "   #{item['url']}"
@@ -48,12 +46,9 @@ module AiDigest
       "AI Digest — #{date}\n\n#{items_text}"
     end
 
-    def self.post_weekly(weekly_result, start_date, end_date)
-      webhook_url = AiDigest.config.dig("slack", "webhook_url") || ENV["AI_DIGEST_SLACK_WEBHOOK"]
-      unless webhook_url
-        warn "Slack webhook not configured — set slack.webhook_url in config/settings.local.yml or AI_DIGEST_SLACK_WEBHOOK env var"
-        return false
-      end
+    def self.post_weekly(weekly_result, start_date, end_date, test: false)
+      webhook_url = resolve_webhook(test: test)
+      return false unless webhook_url
 
       message = format_weekly_message(weekly_result, start_date, end_date)
       uri = URI(webhook_url)
@@ -82,8 +77,9 @@ module AiDigest
       themes_text = themes.map do |theme|
         items_text = theme["items"].map do |item|
           item_number += 1
+          title_url = item["article_url"] || item["url"]
           [
-            "#{item_number}. *#{item['title']}*",
+            "#{item_number}. *<#{title_url}|#{item['title']}>*",
             "   Source: #{item['source']}",
             "   #{item['why_it_matters']}",
             "   #{item['url']}"
@@ -95,5 +91,23 @@ module AiDigest
 
       "Weekly Best of AI — #{date_range}\n\n#{themes_text}"
     end
+    def self.resolve_webhook(test: false)
+      if test
+        url = AiDigest.config.dig("slack", "test_webhook_url")
+        unless url
+          warn "Test Slack webhook not configured — set slack.test_webhook_url in config/settings.local.yml"
+          return nil
+        end
+        url
+      else
+        url = AiDigest.config.dig("slack", "webhook_url") || ENV["AI_DIGEST_SLACK_WEBHOOK"]
+        unless url
+          warn "Slack webhook not configured — set slack.webhook_url in config/settings.local.yml or AI_DIGEST_SLACK_WEBHOOK env var"
+          return nil
+        end
+        url
+      end
+    end
+    private_class_method :resolve_webhook
   end
 end

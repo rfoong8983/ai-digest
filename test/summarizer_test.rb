@@ -46,4 +46,33 @@ class SummarizerTest < Minitest::Test
 
     assert_equal [], parsed
   end
+
+  def test_build_prompt_includes_article_url
+    items_with_article_url = [
+      { title: "Cool Tool", url: "https://github.com/cool/tool", article_url: "https://news.ycombinator.com/item?id=123", summary: "A tool", source: "HN", category: "aggregator", published: Time.now }
+    ]
+    prompt = AiDigest::Summarizer.build_prompt(items_with_article_url, @config)
+
+    assert_includes prompt, "Article-URL: https://news.ycombinator.com/item?id=123"
+    assert_includes prompt, "article_url"
+  end
+
+  def test_parse_response_preserves_article_url
+    response_text = <<~JSON
+      [
+        {
+          "title": "Cool Tool",
+          "source": "HN",
+          "summary": "A cool tool for AI agents.",
+          "tags": ["dev-tooling"],
+          "url": "https://github.com/cool/tool",
+          "article_url": "https://news.ycombinator.com/item?id=123"
+        }
+      ]
+    JSON
+
+    parsed = AiDigest::Summarizer.parse_response(response_text)
+
+    assert_equal "https://news.ycombinator.com/item?id=123", parsed.first["article_url"]
+  end
 end

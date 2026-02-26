@@ -57,7 +57,8 @@ module AiDigest
                   "title": "Item title",
                   "source": "Source name",
                   "why_it_matters": "2-3 sentences on why this is significant this week",
-                  "url": "https://..."
+                  "url": "https://...",
+                  "article_url": "https://... (the source page URL, if available from a [Source] link)"
                 }
               ]
             }

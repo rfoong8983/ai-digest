@@ -26,16 +26,20 @@ module AiDigest
 
       items_md = digest_items.each_with_index.map do |item, i|
         tags = Array(item["tags"]).map { |t| "`#{t}`" }.join(" ")
-        [
+        lines = [
           "## #{i + 1}. #{item['title']}",
           "",
           "**Source:** #{item['source']} | **Tags:** #{tags}",
           "",
           item["summary"],
           "",
-          "[Read more](#{item['url']})",
-          ""
-        ].join("\n")
+          "[Read more](#{item['url']})"
+        ]
+        if item["article_url"] && item["article_url"] != item["url"]
+          lines << " | [Source](#{item['article_url']})"
+        end
+        lines << ""
+        lines.join("\n")
       end.join("\n---\n\n")
 
       "# AI Digest — #{date}\n\n#{items_md}"
