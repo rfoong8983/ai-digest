@@ -23,11 +23,14 @@ Create `config/settings.local.yml` (gitignored) with your real webhook URL:
 ```yaml
 slack:
   webhook_url: "https://hooks.slack.com/services/YOUR/ACTUAL/WEBHOOK"
+  test_webhook_url: "https://hooks.slack.com/services/YOUR/TEST/WEBHOOK"  # optional
 ```
 
 To get a webhook URL, create a [Slack Incoming Webhook](https://api.slack.com/messaging/webhooks) for your workspace.
 
 Alternatively, set the `AI_DIGEST_SLACK_WEBHOOK` environment variable. The config file takes priority if both are set.
+
+The optional `test_webhook_url` lets you post to a different channel for testing (see `--test` flag below).
 
 ### 3. Verify AWS credentials
 
@@ -43,6 +46,7 @@ aws bedrock list-foundation-models --region us-east-1 --output json | jq '.model
 
 ```bash
 bundle exec ruby bin/digest
+bundle exec ruby bin/digest --test   # posts to test webhook instead
 ```
 
 This will:
@@ -55,6 +59,7 @@ This will:
 
 ```bash
 bundle exec ruby bin/weekly-digest
+bundle exec ruby bin/weekly-digest --test   # posts to test webhook instead
 ```
 
 This will:
@@ -62,6 +67,10 @@ This will:
 2. Curate the top 5 items grouped by theme using Claude Sonnet via Bedrock
 3. Post a "Weekly Best of AI" summary to Slack
 4. Save to `digests/weekly-YYYY-MM-DD.md`
+
+### Test mode
+
+Pass `--test` to either script to post to the test webhook (`slack.test_webhook_url`) instead of the production webhook. Useful for verifying formatting without posting to the team channel.
 
 ### Run tests
 
