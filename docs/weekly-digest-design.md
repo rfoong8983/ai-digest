@@ -13,25 +13,25 @@ A weekly "best of" digest that reads the last 7 days of saved daily digests, cur
 ## Data Flow
 
 1. `bin/weekly-digest` reads `.md` files from `digests/` for the last 7 days
-2. `WeeklyCurator` parses items (title, source, summary, tags, url) from markdown
-3. Sends all items to Claude Sonnet via Bedrock with a curation prompt that:
+2. `WeeklyCurator` sends the raw markdown text to Claude Sonnet via Bedrock
+3. Sonnet curation prompt:
    - Detects themes and repeated topics across days
    - Weighs items that appeared from multiple sources higher
    - Ranks by significance and relevance
-4. Sonnet returns top 5 items grouped by theme, each with a "why it matters" framing
-5. Posts to Slack (same channel as daily) with a "Weekly Best Of" format
+4. Sonnet returns top 5 items grouped by theme, each with a "why it matters" framing and both `url` and `article_url` (when a `[Source]` link is available in the daily markdown)
+5. Posts to Slack (same channel as daily, or test channel with `--test`) with a "Weekly Best Of" format
 6. Saves to `digests/weekly-YYYY-MM-DD.md`
 
-## New Files
+## Files
 
-- `lib/ai_digest/weekly_curator.rb` — reads daily digests, parses items, builds prompt, calls Sonnet, parses response
-- `bin/weekly-digest` — orchestrator (mirrors `bin/digest`)
+- `lib/ai_digest/weekly_curator.rb` — reads daily digests, builds prompt, calls Sonnet, parses response
+- `bin/weekly-digest` — orchestrator (mirrors `bin/digest`), supports `--test` flag
 - `bin/run-weekly-digest.sh` — launchd wrapper (mirrors `bin/run-digest.sh`)
-- `test/weekly_curator_test.rb` — tests for markdown parsing, prompt building, response parsing
+- `test/weekly_curator_test.rb` — tests for week loading, prompt building, response parsing
 
 ## Config
 
-New section in `settings.yml`:
+Section in `settings.yml`:
 
 ```yaml
 weekly:
@@ -42,7 +42,7 @@ weekly:
 
 ## Install Script
 
-`bin/install` gains a `--weekly` flag:
+`bin/install` with `--weekly` flag:
 
 - `bin/install` — installs daily job only (existing behavior)
 - `bin/install --weekly` — installs weekly job only (Monday 10 AM)
@@ -52,24 +52,29 @@ Weekly job label: `com.ai-digest.weekly`
 
 ## Slack Message Format
 
+Titles are clickable Slack mrkdwn links using `article_url` (the source discussion page), falling back to `url` when `article_url` is absent.
+
 ```
 Weekly Best of AI — Feb 17-23, 2026
 
 Theme: Agentic Engineering Practices
 
-1. *Agentic Engineering Patterns*
+1. *<https://news.ycombinator.com/item?id=...|Agentic Engineering Patterns>*
    Source: Simon Willison
    Why it matters: ...
+   https://simonwillison.net/2026/...
 
-2. *Writing code is cheap now*
-   Source: Simon Willison
+2. *<https://example.com/article|Writing code is cheap now>*
+   Source: Latent Space
    Why it matters: ...
+   https://example.com/article
 
 Theme: Model Capabilities
 
-3. *The Claude C Compiler*
-   Source: Simon Willison
+3. *<https://anthropic.com/blog/...|The Claude C Compiler>*
+   Source: Anthropic Engineering
    Why it matters: ...
+   https://anthropic.com/blog/...
 
 ...
 ```
